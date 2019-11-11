@@ -1,71 +1,39 @@
-/*
-
- Copyright (c) 2013-2015, Tony Baltovski 
- All rights reserved. 
- 
- Redistribution and use in source and binary forms, with or without 
- modification, are permitted provided that the following conditions are met: 
- 
- * Redistributions of source code must retain the above copyright notice, 
- this list of conditions and the following disclaimer. 
- * Redistributions in binary form must reproduce the above copyright 
- notice, this list of conditions and the following disclaimer in the 
- documentation and/or other materials provided with the distribution. 
- * Neither the name of  nor the names of its contributors may be used to 
- endorse or promote products derived from this software without specific 
- prior written permission. 
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
- LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- POSSIBILITY OF SUCH DAMAGE. 
- 
- */
-
 #include <ros.h>
 #include <ros/time.h>
 #include <ros_arduino_base/UpdateGains.h>
 #include <ros_arduino_msgs/Encoders.h>
 #include <ros_arduino_msgs/CmdDiffVel.h>
-
+#include <Servo.h>
 /********************************************************************************************
 /                                                     USER CONFIG                           *
 /********************************************************************************************/
-
+Servo steering_servo;
 // Select your baud rate here
 #define BAUD 115200
 
 // Select your motor driver here
-#define PololuMC33926
+//#define PololuMC33926
 //#define DFRobotL298PShield
-
+#define CS_Robotics
 // Define your encoder pins here.
 // Try to use pins that have interrupts
 // Left side encoders pins
-#define LEFT_ENCODER_A 18  // Interrupt on Teensy 3.0
-#define LEFT_ENCODER_B 19  // Interrupt on Teensy 3.0
+#define LEFT_ENCODER_A 18  // Interrupt Pin on CS_Board
+#define LEFT_ENCODER_B 19  // Interrupt Pin on CS_Board
 // Right side encoders pins
-#define RIGHT_ENCODER_A 21  // Interrupt on Teensy 3.0
-#define RIGHT_ENCODER_B 20 // Interrupt on Teensy 3.0
+#define RIGHT_ENCODER_A 2  // Interrupt Pin on CS_Board
+#define RIGHT_ENCODER_B 3 // Interrupt Pin on CS_Board
 
+// Servo Pin Define
+#define STEERING_SERVO 6
+#define CAMERA_SERVO 5
 /********************************************************************************************
 /                                                 END OF USER CONFIG                        *
 /********************************************************************************************/
 
 //#define ENCODER_OPTIMIZE_INTERRUPTS
-#include "..\libraries\Encoder.h"
-
-#if defined(PololuMC33926)
-  #include <PololuMC33926.h>
-#endif
-
+#define ENCODER_USE_INTERRUPTS
+#include <Encoder.h>
 #include "motor_driver_config.h"
 
 typedef struct {
@@ -140,6 +108,8 @@ ros::Publisher pub_encoders("encoders", &encoders_msg);
 
 void setup() 
 { 
+  Serial.begin(115200);
+  steering_servo.attach(STEERING_SERVO);
   // Set the node handle
   nh.getHardware()->setBaud(BAUD);
   nh.initNode();
@@ -157,45 +127,45 @@ void setup()
   }
   nh.loginfo("Connected to microcontroller.");
 
-  if (!nh.getParam("control_rate", control_rate,1))
-  {
-    control_rate[0] = 50;
-  }
-  if (!nh.getParam("encoder_rate", encoder_rate,1))
-  {
-    encoder_rate[0] = 50;
-  }
-  if (!nh.getParam("no_cmd_timeout", no_cmd_timeout,1))
-  {
+  //if (!nh.getParam("control_rate", control_rate,1))
+  //{
+    control_rate[0] = 1000;
+  //}
+  //if (!nh.getParam("encoder_rate", encoder_rate,1))
+  //{
+    encoder_rate[0] = 1000;
+  //}
+  //if (!nh.getParam("no_cmd_timeout", no_cmd_timeout,1))
+  //{
     no_cmd_timeout[0] = 1;
-  }
-  if (!nh.getParam("pid_gains", pid_gains,3))
-  { 
-    pid_gains[0] = 150;  // Kp
-    pid_gains[1] =   0;  // Ki
-    pid_gains[2] =  20;  // Kd
-  }
+  //}
+  //if (!nh.getParam("pid_gains", pid_gains,3))
+  //{ 
+    pid_gains[0] = 1500;  // Kp
+    pid_gains[1] =  10;  // Ki
+    pid_gains[2] =  10;  // Kd
+  //}
 
-  if (!nh.getParam("counts_per_rev", counts_per_rev,1))
-  {
-    counts_per_rev[0] = 48.0;
-  }
-  if (!nh.getParam("gear_ratio", gear_ratio,1))
-  {
-    gear_ratio[0] = 75.0/1.0;
-  }
-  if (!nh.getParam("encoder_on_motor_shaft", encoder_on_motor_shaft,1))
-  {
+  //if (!nh.getParam("counts_per_rev", counts_per_rev,1))
+  //{
+    counts_per_rev[0] = 1600.0;
+  //}
+  //if (!nh.getParam("gear_ratio", gear_ratio,1))
+  //{
+    gear_ratio[0] = 31.0/1.0;
+  //}
+  //if (!nh.getParam("encoder_on_motor_shaft", encoder_on_motor_shaft,1))
+  //{
     encoder_on_motor_shaft[0] = 1;
-  }
-  if (!nh.getParam("wheel_radius", wheel_radius,1))
-  {
-    wheel_radius[0] = 0.120/2.0;
-  }
-  if (!nh.getParam("pwm_range", pwm_range,1))
-  {
+  //}
+  //if (!nh.getParam("wheel_radius", wheel_radius,1))
+  //{
+    wheel_radius[0] = 0.100/2.0;
+  //}
+  //if (!nh.getParam("pwm_range", pwm_range,1))
+  //{
     pwm_range[0] = 255;
-  }
+  //}
 
   // Compute the meters per count
   if (encoder_on_motor_shaft[0] == 1)
@@ -225,6 +195,9 @@ void loop()
     encoders_msg.header.stamp = nh.now();
     pub_encoders.publish(&encoders_msg);
     last_encoders_time = millis();
+    //Serial.print(encoders_msg.left);
+    //Serial.print(" ");
+    //Serial.println(encoders_msg.right);
   }
   if ((millis()) - last_control_time >= (1000 / control_rate[0]))
   {
@@ -244,8 +217,19 @@ void loop()
 
 void cmdDiffVelCallback( const ros_arduino_msgs::CmdDiffVel& diff_vel_msg) 
 {
+  int steering_value = 0;
   left_motor_controller.desired_velocity = diff_vel_msg.left;
   right_motor_controller.desired_velocity = diff_vel_msg.right;
+  steering_value = 90 - (diff_vel_msg.steering);
+  if(steering_value > 130)
+  {
+    steering_value = 130;
+  }
+  else if(steering_value < 50)
+  {
+    steering_value = 50;
+  }
+  steering_servo.write(steering_value);
   last_cmd_time = millis();
 }
 
