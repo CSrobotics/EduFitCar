@@ -3,11 +3,11 @@
 #include <ros_arduino_base/UpdateGains.h>
 #include <ros_arduino_msgs/Encoders.h>
 #include <ros_arduino_msgs/CmdDiffVel.h>
-#include <Servo.h>
+
 /********************************************************************************************
 /                                                     USER CONFIG                           *
 /********************************************************************************************/
-Servo steering_servo;
+
 // Select your baud rate here
 #define BAUD 115200
 
@@ -23,10 +23,6 @@ Servo steering_servo;
 // Right side encoders pins
 #define RIGHT_ENCODER_A 2  // Interrupt Pin on CS_Board
 #define RIGHT_ENCODER_B 3 // Interrupt Pin on CS_Board
-
-// Servo Pin Define
-#define STEERING_SERVO 6
-#define CAMERA_SERVO 5
 /********************************************************************************************
 /                                                 END OF USER CONFIG                        *
 /********************************************************************************************/
@@ -108,8 +104,7 @@ ros::Publisher pub_encoders("encoders", &encoders_msg);
 
 void setup() 
 { 
-  Serial.begin(115200);
-  steering_servo.attach(STEERING_SERVO);
+  Serial.begin(BAUD);
   // Set the node handle
   nh.getHardware()->setBaud(BAUD);
   nh.initNode();
@@ -129,11 +124,11 @@ void setup()
 
   //if (!nh.getParam("control_rate", control_rate,1))
   //{
-    control_rate[0] = 1000;
+    control_rate[0] = 100;
   //}
   //if (!nh.getParam("encoder_rate", encoder_rate,1))
   //{
-    encoder_rate[0] = 1000;
+    encoder_rate[0] = 100;
   //}
   //if (!nh.getParam("no_cmd_timeout", no_cmd_timeout,1))
   //{
@@ -141,9 +136,9 @@ void setup()
   //}
   //if (!nh.getParam("pid_gains", pid_gains,3))
   //{ 
-    pid_gains[0] = 1500;  // Kp
-    pid_gains[1] =  10;  // Ki
-    pid_gains[2] =  10;  // Kd
+    pid_gains[0] = 100;  // Kp
+    pid_gains[1] =  2;  // Ki
+    pid_gains[2] =  20;  // Kd
   //}
 
   //if (!nh.getParam("counts_per_rev", counts_per_rev,1))
@@ -156,7 +151,7 @@ void setup()
   //}
   //if (!nh.getParam("encoder_on_motor_shaft", encoder_on_motor_shaft,1))
   //{
-    encoder_on_motor_shaft[0] = 1;
+    encoder_on_motor_shaft[0] = 0;
   //}
   //if (!nh.getParam("wheel_radius", wheel_radius,1))
   //{
@@ -195,9 +190,9 @@ void loop()
     encoders_msg.header.stamp = nh.now();
     pub_encoders.publish(&encoders_msg);
     last_encoders_time = millis();
-    //Serial.print(encoders_msg.left);
-    //Serial.print(" ");
-    //Serial.println(encoders_msg.right);
+    Serial.print(encoders_msg.left);
+    Serial.print(" ");
+    Serial.println(encoders_msg.right);
   }
   if ((millis()) - last_control_time >= (1000 / control_rate[0]))
   {
@@ -217,19 +212,8 @@ void loop()
 
 void cmdDiffVelCallback( const ros_arduino_msgs::CmdDiffVel& diff_vel_msg) 
 {
-  int steering_value = 0;
   left_motor_controller.desired_velocity = diff_vel_msg.left;
   right_motor_controller.desired_velocity = diff_vel_msg.right;
-  steering_value = 90 - (diff_vel_msg.steering);
-  if(steering_value > 130)
-  {
-    steering_value = 130;
-  }
-  else if(steering_value < 50)
-  {
-    steering_value = 50;
-  }
-  steering_servo.write(steering_value);
   last_cmd_time = millis();
 }
 

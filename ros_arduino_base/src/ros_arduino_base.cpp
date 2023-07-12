@@ -58,11 +58,11 @@ ROSArduinoBase::ROSArduinoBase(ros::NodeHandle nh, ros::NodeHandle pnh):
   pnh_.param<bool>("publish_tf", publish_tf_, false);
   pnh_.param<std::string>("odom/odom_frame_id", odom_frame_, "odom");
   pnh_.param<std::string>("odom/base_frame_id", base_frame_, "base_link");
-  pnh_.param<double>("counts_per_rev", counts_per_rev_, 1620.0);
+  pnh_.param<double>("counts_per_rev", counts_per_rev_, 1600.0);
   pnh_.param<double>("gear_ratio", gear_ratio_, (31.0 / 1.0));
-  pnh_.param<int>("encoder_on_motor_shaft", encoder_on_motor_shaft_, 1);
+  pnh_.param<int>("encoder_on_motor_shaft", encoder_on_motor_shaft_, 0);
   pnh_.param<double>("wheel_radius", wheel_radius_, (0.100 / 2.0));
-  pnh_.param<double>("base_width", base_width_ , 0.260);
+  pnh_.param<double>("base_width", base_width_ , 0.200);
 
   if (encoder_on_motor_shaft_ == 1)
   {
@@ -95,9 +95,8 @@ void ROSArduinoBase::cmdVelCallback(const geometry_msgs::Twist::ConstPtr& vel_ms
 {
   ros_arduino_msgs::CmdDiffVel cmd_diff_vel_msg;
   // Convert to velocity to each wheel
-  cmd_diff_vel_msg.right = (vel_msg->linear.x);
-  cmd_diff_vel_msg.left  = (vel_msg->linear.x);
-  cmd_diff_vel_msg.steering  = (vel_msg->angular.z);
+  cmd_diff_vel_msg.right = (vel_msg->linear.x + ((base_width_ /  2) * vel_msg->angular.z));
+  cmd_diff_vel_msg.left  = (vel_msg->linear.x + ((base_width_ / -2) * vel_msg->angular.z));
   cmd_diff_vel_pub_.publish(cmd_diff_vel_msg);
 }
 

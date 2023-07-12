@@ -1,10 +1,10 @@
 wheel_radius: 0.10 # m
-base_width: 0.26 # m
-counts_per_rev: 1024.0
+base_width: 0.21 # m
+counts_per_rev: 1600.0
 gear_ratio: 31.0
-encoder_on_motor_shaft: 1 # 0 is false and 1 is true
+encoder_on_motor_shaft: 0 # 0 is false and 1 is true
 
-pid_gains: [100,10,3]
+pid_gains: [100,10,10]
 control_rate: [50]
 encoder_rate: [50]
 pwm_range: [255]
